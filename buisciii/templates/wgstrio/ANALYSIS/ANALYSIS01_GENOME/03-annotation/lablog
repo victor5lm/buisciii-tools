@@ -27,7 +27,7 @@ echo "srun --partition short_idx --time 2:00:00 --chdir ${scratch_dir} --output 
 
 # Run Vep without the plugin columns
 
-echo "srun --partition short_idx --mem 100G --time 12:00:00 --chdir ${scratch_dir} --output logs/VEP.log --job-name VEP singularity exec -B /data/ucct/bi/references/eukaria/homo_sapiens/hg19/1000genomes_b37/genome/ -B /data/ucct/bi/references/eukaria/homo_sapiens/cache_vep/ -B ${scratch_dir}/../../../ /data/ucct/bi/pipelines/singularity-images/ensembl-vep:103.1--pl5262h4a94de4_2 vep --fasta /data/ucct/bi/references/eukaria/homo_sapiens/hg19/1000genomes_b37/genome/human_g1k_v37.fasta -i ${scratch_dir}/vep/variants_fil_mod.vcf -o ${scratch_dir}/vep/vep_annot.vcf --cache --offline --dir_cache /data/ucct/bi/references/eukaria/homo_sapiens/cache_vep/ --everything --assembly GRCh37 --tab &" > _02_vep_annotation.sh
+echo "srun --partition short_idx --cpus-per-task 16 --mem 100G --time 12:00:00 --chdir ${scratch_dir} --output logs/VEP.log --job-name VEP singularity exec -B /data/ucct/bi/references/eukaria/homo_sapiens/hg19/1000genomes_b37/genome/ -B /data/ucct/bi/references/eukaria/homo_sapiens/cache_vep/ -B ${scratch_dir}/../../../ /data/ucct/bi/pipelines/singularity-images/ensembl-vep:103.1--pl5262h4a94de4_2 vep --fasta /data/ucct/bi/references/eukaria/homo_sapiens/hg19/1000genomes_b37/genome/human_g1k_v37.fasta -i ${scratch_dir}/vep/variants_fil_mod.vcf -o ${scratch_dir}/vep/vep_annot.vcf --cache --offline --dir_cache /data/ucct/bi/references/eukaria/homo_sapiens/cache_vep/ --everything --assembly GRCh37 --species homo_sapiens --tab --fork 16 --force_overwrite &" > _02_vep_annotation.sh
 
 #--------------------------------------------------------------------------------------------------------------------
 
@@ -48,11 +48,12 @@ echo "srun --partition short_idx --time 2:00:00 --chdir ${scratch_dir} --output 
 
 # 6. Filter variants_annot_all.tab
 
-echo "awk 'NR>1 && \$58 > 0.001 {print \$0}' variants_annot_all.tab > ./variants_annot_filterAF.tab" >> aux_03_awk.sh
+echo "max_af_col=\$( head -n 1 variants_annot_all.tab | tr '\t' '\n' | nl -v0 | grep -i 'MAX_AF$' | awk '{print \$1 + 1}' )" >> aux_03_awk.sh
 
-echo "cat header_vep_final_annot.txt variants_annot_filterAF.tab > variants_annot_filterAF_head.tab" >> aux_03_awk.sh
-
-echo "rm variants_annot_filterAF.tab" >> aux_03_awk.sh
+echo "{" >> aux_03_awk.sh
+echo "  head -n 1 variants_annot_all.tab" >> aux_03_awk.sh
+echo "  awk -F'\t' -v max_af_col=\$max_af_col 'NR>1 && \$max_af_col > 0.001 {print \$0}' variants_annot_all.tab" >> aux_03_awk.sh
+echo "} > variants_annot_filterAF_head.tab" >> aux_03_awk.sh
 
 #---------------------------------------------------------------------------------------------------------------------------------
 
@@ -135,3 +136,89 @@ cat inheritance_types.txt | xargs -I % echo "rm ./filter_inheritance/filter_inhe
 
 # annot_all table is huge, lets shrink it a little bit
 echo "srun --partition short_idx --chdir ${scratch_dir} --output logs/COMPRESS.log --job-name COMPRESS_ANNOT_ALL gzip variants_annot_all.tab &" >> _05_filter_inheritance_ALL.sh
+
+
+#--------------------------------------------------------------------------------------------------------
+
+# 11. Merge inheritance VEP annotations into unified files for downstream applications
+
+cat <<'EOF' > _06_merge_vep_annot.sh
+#!/bin/bash
+
+###############################################################################
+# MERGE FUNCTION
+###############################################################################
+
+merge_files () {
+
+    INPUT_DIR=$1
+    OUTPUT_FILE=$2
+
+    rm -f "${OUTPUT_FILE}"
+
+    first_file=true
+
+    for file in ${INPUT_DIR}/vep_annot*_final.txt
+    do
+
+        inheritance=$(basename "${file}" | sed -E 's/vep_annot_([A-Z]+).*/\1/')
+
+        if $first_file
+        then
+
+            awk -v inh="${inheritance}" '
+            BEGIN{FS=OFS="\t"}
+
+            NR==1{
+                print $0, "inheritance_source"
+            }
+
+            NR>1{
+                print $0, inh
+            }
+
+            ' "${file}" > "${OUTPUT_FILE}"
+
+            first_file=false
+
+        else
+
+            awk -v inh="${inheritance}" '
+            BEGIN{FS=OFS="\t"}
+
+            NR>1{
+                print $0, inh
+            }
+
+            ' "${file}" >> "${OUTPUT_FILE}"
+
+        fi
+
+    done
+}
+
+###############################################################################
+# WHOLE GENOME
+###############################################################################
+
+merge_files \
+"./filter_inheritance/filter_inheritance" \
+"./filter_inheritance/filter_inheritance/vep_annot_ALL_final.txt"
+
+###############################################################################
+# EXOME
+###############################################################################
+
+merge_files \
+"./filter_inheritance/filter_inheritance_exome" \
+"./filter_inheritance/filter_inheritance_exome/vep_annot_ALL_exome_final.txt"
+
+###############################################################################
+# GENES
+###############################################################################
+
+merge_files \
+"./filter_inheritance/filter_inheritance_genes" \
+"./filter_inheritance/filter_inheritance_genes/vep_annot_ALL_genes_final.txt"
+
+EOF

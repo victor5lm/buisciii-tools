@@ -64,10 +64,10 @@ cat <<EOF > taxprofiler.sbatch
 #SBATCH --output $(date '+%Y%m%d')_taxprofiler.log
 #SBATCH --chdir $scratch_dir
 
-# module load Nextflow/24.04.2 singularity
+# module load Nextflow/25.04.6 singularity
 export NXF_OPTS="-Xms500M -Xmx6G"
 
-nextflow run /data/ucct/bi/pipelines/nf-core-taxprofiler/nf-core-taxprofiler-1.2.4 \\
+nextflow run /data/ucct/bi/pipelines/nf-core-taxprofiler/nf-core-taxprofiler_2.0.0/2_0_0/main.nf \\
     -profile singularity \\
     -c ../../DOC/taxprofiler.config \\
     --input samplesheet.csv \\
@@ -90,3 +90,4 @@ nextflow run /data/ucct/bi/pipelines/nf-core-taxprofiler/nf-core-taxprofiler-1.2
 EOF
 
 echo "sbatch taxprofiler.sbatch" > _01_nf_taxprofiler.sh
+

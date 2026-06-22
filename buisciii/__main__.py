@@ -66,7 +66,7 @@ def run_buisciii():
         highlight=False,
     )
 
-    __version__ = "2.3.2"
+    __version__ = "2.3.3"
     stderr.print(
         "[grey39]    BUISCIII-tools version {}".format(__version__), highlight=False
     )
@@ -998,7 +998,7 @@ def fix_permissions(ctx, input_directory):
             else:
                 log.exception(f"EXCEPTION FOUND: {e}")
                 stderr.print(f"EXCEPTION FOUND: {e}")
-                sys.exit(1)
+                continue
 
 
 if __name__ == "__main__":

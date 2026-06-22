@@ -4,6 +4,65 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.3] - 2026-06-22 : https://github.com/BU-ISCIII/buisciii-tools/releases/tag/2.3.3
+
+### Credits
+
+- [Enrique Sapena](https://github.com/ESapenaVentura)
+- [Sarai Varona](https://github.com/svarona)
+- [Magdalena Matito](https://github.com/magdasmat)
+- [Pau Pascual](https://github.com/PauPascualMas)
+- [Juan Ledesma](https://github.com/juanledesma78)
+- [Sandra Sánchez](https://github.com/sandrasnchz)
+- [Victor Lopez](https://github.com/victor5lm)
+
+### Template fixes and updates
+
+- Added parallelization to IRMA's 99-stats summary creation. [#648](https://github.com/BU-ISCIII/buisciii-tools/pull/648)
+- Fixed major error while filtering IRMA's vf files. [#649](https://github.com/BU-ISCIII/buisciii-tools/pull/649)
+- Fixed wgstrio 99-stats lablog to prevent OutOfMemoryError on WGS samples. [#654](https://github.com/BU-ISCIII/buisciii-tools/pull/654)
+- Fixed wgstrio folder template structure [#655](https://github.com/BU-ISCIII/buisciii-tools/pull/655)
+- Updated recommended Nextflow version in taxprofiler lablog [#655](https://github.com/BU-ISCIII/buisciii-tools/pull/655)
+- Fixing AF filtering and results symlinks in wgstrio template [#659](https://github.com/BU-ISCIII/buisciii-tools/pull/659)
+- Fixed column selection, now selects MAX_AF in wgstrio template [#660](https://github.com/BU-ISCIII/buisciii-tools/pull/660)
+- Fixed QSslSocket and wkhtmltopdf errors in bioinfo-doc PDF generation [#662](https://github.com/BU-ISCIII/buisciii-tools/pull/662)
+- Make VEP header generation dynamic and remove static template dependency [#664] (https://github.com/BU-ISCIII/buisciii-tools/pull/664)
+- Updated blast database with new assemblies downloaded in March 2026 [#665](https://github.com/BU-ISCIII/buisciii-tools/pull/665)
+- Added numeric sample ID validation for samplesheet.csv in assembly lablog [#667](https://github.com/BU-ISCIII/buisciii-tools/pull/667)
+- Updated `wgstrio`, `exometrio` and `rnaseq` templates to generate OmicsExplorer-compatible outputs. [#668](https://github.com/BU-ISCIII/buisciii-tools/pull/668)
+- Updated blast database location to refgenie directory [#683](https://github.com/BU-ISCIII/buisciii-tools/pull/683)
+- Add trim_poly_x fastp arg to assembly config [#685](https://github.com/BU-ISCIII/buisciii-tools/pull/685)
+- Updated A__N1 and A__N2 subtype results in flu_type_refs.txt [#687](https://github.com/BU-ISCIII/buisciii-tools/pull/687)
+- Updated new paths to refgenie databases in databasesheet.csv of taxprofiler [#689](https://github.com/BU-ISCIII/buisciii-tools/pull/689)
+- Updated viralrecon's config file [#691](https://github.com/BU-ISCIII/buisciii-tools/pull/691).
+- Updated the services.json file's structure, so that an auxiliary cleaning file is used by the clean module if applicable [#692](https://github.com/BU-ISCIII/buisciii-tools/pull/692).
+- Optimized annotation wgs & exome [#695](https://github.com/BU-ISCIII/buisciii-tools/pull/695)
+- Updated several software versions [#696](https://github.com/BU-ISCIII/buisciii-tools/pull/696)
+- Updated nextclade checks for IRMA and viralrecon [#697](https://github.com/BU-ISCIII/buisciii-tools/pull/697)
+- Enabled micromamba env activation when launching a script [#699](https://github.com/BU-ISCIII/buisciii-tools/pull/699)
+- Updated kaiju conf for taxprofiler [#701](https://github.com/BU-ISCIII/buisciii-tools/pull/701)
+
+### Modules
+
+#### Implementation
+
+- Added DROP as a new service, including automatic input generation, module-specific adaptations and standardized result processing. [#668](https://github.com/BU-ISCIII/buisciii-tools/pull/668)
+- Created viralrecon_clean.py, an auxiliary file to clean unnecessary files from viralrecon service [#692](https://github.com/BU-ISCIII/buisciii-tools/pull/692).
+
+#### Added enhancements
+
+- Improved clean module so that an aux cleaning file is employed for specific services if applicable [#692](https://github.com/BU-ISCIII/buisciii-tools/pull/692).
+- Improved HTTP error handling in drylab_api module and fixed fix-permissions so that it does not break given insufficient permissions [#694](https://github.com/BU-ISCIII/buisciii-tools/pull/694).
+- Implemented date filtering for research in archive, improved logging and error handling [#700](https://github.com/BU-ISCIII/buisciii-tools/pull/700)
+
+#### Fixes
+
+#### Changed
+
+#### Removed
+
+### Requirements
+
 ## [2.3.2] - 2026-03-31 : https://github.com/BU-ISCIII/buisciii-tools/releases/tag/2.3.2
 
 ### Credits
