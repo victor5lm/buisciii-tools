@@ -9,8 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Credits
 
 - [Enrique Sapena](https://github.com/ESapenaVentura)
+- [Victor Lopez](https://github.com/victor5lm)
 
 ### Template fixes and updates
+
+- Updated assembly config for MultiQC and RESULTS lablog [#708](https://github.com/BU-ISCIII/buisciii-tools/pull/708)
 
 ### Modules
 
@@ -27,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 #### Removed
 
 ### Requirements
+
+- Updated wkhtmltopdf version requirement from 0.12.4 to 0.12.6.1 [#708](https://github.com/BU-ISCIII/buisciii-tools/pull/708)
 
 ## [2.3.3] - 2026-06-22 : https://github.com/BU-ISCIII/buisciii-tools/releases/tag/2.3.3
 
