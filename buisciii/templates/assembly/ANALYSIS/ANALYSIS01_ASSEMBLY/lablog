@@ -123,6 +123,7 @@ nextflow run /data/ucct/bi/pipelines/nf-core-bacass/nf-core-bacass-2.5.0/main.nf
         --save_trimmed ${SAVETRIMMED} \\
         --skip_kraken2 true \\
         --skip_kmerfinder false \\
+        --skip_busco true \\
         --kmerfinderdb /data/ucct/bi/references/kmerfinder/latest/bacteria \\
         --ncbi_assembly_metadata /data/ucct/bi/references/bacteria/20240626/assembly_summary_refseq.txt \\
         ${PROKKA_ARGS} \\
