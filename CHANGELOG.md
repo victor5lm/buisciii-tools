@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Updated assembly config for MultiQC and RESULTS lablog [#708](https://github.com/BU-ISCIII/buisciii-tools/pull/708)
 - Updated iGenomes paths [#710](https://github.com/BU-ISCIII/buisciii-tools/pull/710)
+- Updated the assembly template to skip busco and some paths in correspondence to refgenie system [#711](https://github.com/BU-ISCIII/buisciii-tools/pull/711)
 
 ### Modules
 
