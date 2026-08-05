@@ -711,18 +711,11 @@ def annotate_variant_row(row: dict[str, str]) -> dict[str, str]:
                 f"{call}: {format_number(count)}/{format_number(row.get(f'{prefix}_depth', ''))} "
                 f"({format_fraction(fraction)}); strands {format_number(forward)}/{format_number(reverse)}"
             )
-    warnings = row.get("qc_warnings", "")
-    row["qc_status"] = "PASS" if not warnings else "REVIEW"
-    row["review_reasons"] = warnings or "none"
     return row
 
 
 def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int) -> list[dict[str, str]]:
     """Include additional useful interpretation fields to the TSV output files"""
-    pair_extra = [
-        "pair_selection_rule", "comparable_core_fraction", "matrix_availability",
-        "pair_qc_status", "pair_review_reasons",
-    ]
     with pairs_path.open(newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         pair_rows = list(reader)
@@ -731,7 +724,6 @@ def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int)
         comparable = as_float(row.get("comparable_core_sites")) or 0
         ignored = as_float(row.get("ignored_non_acgt_sites")) or 0
         total = comparable + ignored
-        row["pair_selection_rule"] = f"snp_distance < {threshold}"
         row["comparable_core_fraction"] = "" if total == 0 else str(comparable / total)
         missing = [
             label for label, field in (
@@ -741,11 +733,17 @@ def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int)
             ) if not row.get(field, "")
         ]
         row["matrix_availability"] = "all_available" if not missing else "missing:" + ",".join(missing)
-        warnings = row.get("distance_comparison_warnings", "")
-        row["pair_qc_status"] = "PASS" if not warnings else "REVIEW"
-        row["pair_review_reasons"] = warnings or "none"
+    ordered_pair_fields = []
+    for field in pair_fields:
+        ordered_pair_fields.append(field)
+
+        if field == "ignored_non_acgt_sites":
+            ordered_pair_fields.append("comparable_core_fraction")
+
+        if field == "snps_removed_by_gubbins":
+            ordered_pair_fields.append("matrix_availability")
     with tempfile.NamedTemporaryFile("w", newline="", dir=pairs_path.parent, delete=False) as temporary:
-        writer = csv.DictWriter(temporary, fieldnames=pair_fields + pair_extra, delimiter="\t")
+        writer = csv.DictWriter(temporary, fieldnames=ordered_pair_fields, delimiter="\t")
         writer.writeheader()
         writer.writerows(pair_rows)
         temporary_path = Path(temporary.name)
@@ -760,7 +758,7 @@ def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int)
             f"sample_{number}_called_allele_minor_strand_fraction",
             f"sample_{number}_evidence_summary",
         )
-    ] + ["qc_status", "review_reasons"]
+    ]
     context_fields = [
         field for field in variant_fields
         if (not field.startswith("sample_") or field in ("sample_1", "sample_2"))
@@ -768,8 +766,7 @@ def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int)
     ]
     sample_1_fields = [field for field in variant_fields + derived_fields if field.startswith("sample_1_")]
     sample_2_fields = [field for field in variant_fields + derived_fields if field.startswith("sample_2_")]
-    qc_fields = ["qc_warnings", "qc_status", "review_reasons"]
-    ordered_variant_fields = context_fields + sample_1_fields + sample_2_fields + qc_fields
+    ordered_variant_fields = context_fields + sample_1_fields + sample_2_fields + ["qc_warnings"]
     with tempfile.NamedTemporaryFile("w", newline="", dir=variants_path.parent, delete=False) as temporary:
         writer = csv.DictWriter(temporary, fieldnames=ordered_variant_fields, delimiter="\t")
         writer.writeheader()
@@ -785,7 +782,6 @@ def write_variant_summary(path: Path, rows: list[dict[str, str]]) -> None:
         "pair_id", "sample_1", "sample_2", "snp_distance", "chrom", "pos", "core_ref",
         "sample_1_call", "sample_2_call", "sample_1_evidence_summary",
         "sample_2_evidence_summary", "removed_by_gubbins", "pair_clustered_snp",
-        "qc_status", "review_reasons",
     ]
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t")
@@ -814,11 +810,8 @@ def column_description(column: str) -> tuple[str, str]:
         "snps_removed_by_gubbins": ("snp_distance − clean_core_aln_distance.", "Differences no longer contributing to the clean-alignment distance."),
         "clean_distance_valid": ("Comparison of clean_core_aln_distance and snp_distance.", "yes when the clean distance is not greater than the original distance."),
         "distance_comparison_warnings": ("Calculated from the three distance-matrix comparisons.", "Semicolon-separated matrix discrepancies or missing-matrix warnings."),
-        "pair_selection_rule": ("Command-line parameter --threshold.", "Strict rule used to retain this pair."),
         "comparable_core_fraction": ("comparable_core_sites / (comparable_core_sites + ignored_non_acgt_sites).", "Fraction of core.tab positions usable for this pair."),
         "matrix_availability": ("Presence of the three generated distance-matrix files.", "States whether core.tab, phylo and clean-core comparison matrices were available."),
-        "pair_qc_status": ("distance_comparison_warnings.", "PASS when no pair-level matrix warning exists; REVIEW otherwise."),
-        "pair_review_reasons": ("distance_comparison_warnings.", "Pair-level warnings, or none."),
         "chrom": ("core.tab: CHR.", "Chromosome identifier."),
         "pos": ("core.tab: POS.", "Genomic coordinate."),
         "core_ref": ("core.tab: REF.", "Reference base in core.tab."),
@@ -828,8 +821,6 @@ def column_description(column: str) -> tuple[str, str]:
         "pair_clustered_snp": ("pair_local_snp_count compared with --cluster-min-snps.", "yes when this SNP belongs to a local SNP cluster."),
         "removed_by_gubbins": ("gubbins.recombination_predictions.gff coordinates.", "yes when the SNP lies in a predicted recombinant interval; only calculated automatically for a single-contig core.tab."),
         "qc_warnings": ("QC checks on this row's VCF/BAM evidence and context.", "Semicolon-separated flags; they request review and do not remove the row."),
-        "qc_status": ("qc_warnings.", "PASS when no QC flags were raised; REVIEW otherwise."),
-        "review_reasons": ("qc_warnings.", "QC flags for this SNP, or none."),
     }
     if column in definitions:
         return definitions[column]
