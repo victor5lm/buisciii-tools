@@ -93,13 +93,13 @@ echo "srun --chdir ${scratch_dir} --output logs/SNP_DISTANCE_MATRICES.%j.log --j
 ##   close_pair_snp_qc_pairs.tsv    close pairs and their SNP distances
 ##   close_pair_snp_qc_variants.tsv differing positions, read evidence, and a semicolon-separated qc_warnings column
 ##   close_pair_snp_qc_variants_summary.tsv compact, human-readable SNP review table
-##   close_pair_snp_qc_column_descriptions.tsv  source and definition of every output column
-##   close_pair_snp_qc_report.xlsx  Excel report with README and result sheets
+##   close_pair_snp_qc_report.xlsx  Excel report with README, result sheets,
+##                                  and column descriptions
 ##   close_pair_snp_qc_metadata.json    run parameters, resolved input paths and core.tab SHA-256 provenance
 ##
-## The summary, column-description, metadata and Excel files are written by
-## default. Use --no-summary, --no-column-descriptions,
-## --no-metadata or --no-excel to omit them; --excel-output sets a custom name.
+## The summary, metadata and Excel files are written by default. Use
+## --no-summary, --no-metadata or --no-excel to omit them; --excel-output sets
+## a custom name.
 ##
 ## Possible qc_warnings values include low_depth, low_called_fraction,
 ## strand_bias, near_indel_or_complex, homopolymer_context, local_snp_cluster,
