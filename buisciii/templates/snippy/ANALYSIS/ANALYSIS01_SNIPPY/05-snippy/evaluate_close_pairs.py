@@ -663,7 +663,6 @@ def collect_qc_warnings(
     return warnings
 
 
-
 def as_float(value: object) -> float | None:
     """Return a numeric value, or ``None`` when an evidence field is absent."""
     try:
@@ -698,14 +697,22 @@ def annotate_variant_row(row: dict[str, str]) -> dict[str, str]:
         forward = row.get(f"{prefix}_{called_kind}_forward_count", "")
         reverse = row.get(f"{prefix}_{called_kind}_reverse_count", "")
         forward_value, reverse_value = as_float(forward), as_float(reverse)
-        if forward_value is None or reverse_value is None or forward_value + reverse_value == 0:
+        if (
+            forward_value is None
+            or reverse_value is None
+            or forward_value + reverse_value == 0
+        ):
             minor_fraction = ""
         else:
-            minor_fraction = str(min(forward_value, reverse_value) / (forward_value + reverse_value))
+            minor_fraction = str(
+                min(forward_value, reverse_value) / (forward_value + reverse_value)
+            )
         evidence_available = status in ("variant_record", "reference_call_mpileup")
         row[f"{prefix}_called_allele_minor_strand_fraction"] = minor_fraction
         if not evidence_available:
-            row[f"{prefix}_evidence_summary"] = f"{call}: evidence not available ({status})"
+            row[f"{prefix}_evidence_summary"] = (
+                f"{call}: evidence not available ({status})"
+            )
         else:
             row[f"{prefix}_evidence_summary"] = (
                 f"{call}: {format_number(count)}/{format_number(row.get(f'{prefix}_depth', ''))} "
@@ -714,7 +721,9 @@ def annotate_variant_row(row: dict[str, str]) -> dict[str, str]:
     return row
 
 
-def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int) -> list[dict[str, str]]:
+def enhance_output_tables(
+    pairs_path: Path, variants_path: Path, threshold: int
+) -> list[dict[str, str]]:
     """Include additional useful interpretation fields to the TSV output files"""
     with pairs_path.open(newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
@@ -726,24 +735,30 @@ def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int)
         total = comparable + ignored
         row["comparable_core_fraction"] = "" if total == 0 else str(comparable / total)
         missing = [
-            label for label, field in (
+            label
+            for label, field in (
                 ("core_tab", "core_tab_matrix_distance"),
                 ("phylo", "phylo_aln_distance"),
                 ("clean_core", "clean_core_aln_distance"),
-            ) if not row.get(field, "")
+            )
+            if not row.get(field, "")
         ]
-        row["matrix_availability"] = "all_available" if not missing else "missing:" + ",".join(missing)
+        row["matrix_availability"] = (
+            "all_available" if not missing else "missing:" + ",".join(missing)
+        )
     ordered_pair_fields = []
     for field in pair_fields:
         ordered_pair_fields.append(field)
-
         if field == "ignored_non_acgt_sites":
             ordered_pair_fields.append("comparable_core_fraction")
-
         if field == "snps_removed_by_gubbins":
             ordered_pair_fields.append("matrix_availability")
-    with tempfile.NamedTemporaryFile("w", newline="", dir=pairs_path.parent, delete=False) as temporary:
-        writer = csv.DictWriter(temporary, fieldnames=ordered_pair_fields, delimiter="\t")
+    with tempfile.NamedTemporaryFile(
+        "w", newline="", dir=pairs_path.parent, delete=False
+    ) as temporary:
+        writer = csv.DictWriter(
+            temporary, fieldnames=ordered_pair_fields, delimiter="\t"
+        )
         writer.writeheader()
         writer.writerows(pair_rows)
         temporary_path = Path(temporary.name)
@@ -754,21 +769,38 @@ def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int)
         variant_rows = [annotate_variant_row(dict(row)) for row in reader]
         variant_fields = list(reader.fieldnames or [])
     derived_fields = [
-        field for number in (1, 2) for field in (
+        field
+        for number in (1, 2)
+        for field in (
             f"sample_{number}_called_allele_minor_strand_fraction",
             f"sample_{number}_evidence_summary",
         )
     ]
     context_fields = [
-        field for field in variant_fields
+        field
+        for field in variant_fields
         if (not field.startswith("sample_") or field in ("sample_1", "sample_2"))
         and field != "qc_warnings"
     ]
-    sample_1_fields = [field for field in variant_fields + derived_fields if field.startswith("sample_1_")]
-    sample_2_fields = [field for field in variant_fields + derived_fields if field.startswith("sample_2_")]
-    ordered_variant_fields = context_fields + sample_1_fields + sample_2_fields + ["qc_warnings"]
-    with tempfile.NamedTemporaryFile("w", newline="", dir=variants_path.parent, delete=False) as temporary:
-        writer = csv.DictWriter(temporary, fieldnames=ordered_variant_fields, delimiter="\t")
+    sample_1_fields = [
+        field
+        for field in variant_fields + derived_fields
+        if field.startswith("sample_1_")
+    ]
+    sample_2_fields = [
+        field
+        for field in variant_fields + derived_fields
+        if field.startswith("sample_2_")
+    ]
+    ordered_variant_fields = (
+        context_fields + sample_1_fields + sample_2_fields + ["qc_warnings"]
+    )
+    with tempfile.NamedTemporaryFile(
+        "w", newline="", dir=variants_path.parent, delete=False
+    ) as temporary:
+        writer = csv.DictWriter(
+            temporary, fieldnames=ordered_variant_fields, delimiter="\t"
+        )
         writer.writeheader()
         writer.writerows(variant_rows)
         temporary_path = Path(temporary.name)
@@ -779,9 +811,19 @@ def enhance_output_tables(pairs_path: Path, variants_path: Path, threshold: int)
 def write_variant_summary(path: Path, rows: list[dict[str, str]]) -> None:
     """Write one concise, report-oriented row per pair-specific SNP"""
     fields = [
-        "pair_id", "sample_1", "sample_2", "snp_distance", "chrom", "pos", "core_ref",
-        "sample_1_call", "sample_2_call", "sample_1_evidence_summary",
-        "sample_2_evidence_summary", "removed_by_gubbins", "pair_clustered_snp",
+        "pair_id",
+        "sample_1",
+        "sample_2",
+        "snp_distance",
+        "chrom",
+        "pos",
+        "core_ref",
+        "sample_1_call",
+        "sample_2_call",
+        "sample_1_evidence_summary",
+        "sample_2_evidence_summary",
+        "removed_by_gubbins",
+        "pair_clustered_snp",
     ]
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t")
@@ -796,31 +838,91 @@ def column_description(column: str) -> tuple[str, str]:
     to make column interpretation easier.
     """
     definitions = {
-        "pair_id": ("Generated as pair_0001, pair_0002, … in ascending distance order.", "Identifier linking a pair row to its SNP-variant rows."),
+        "pair_id": (
+            "Generated as pair_0001, pair_0002, … in ascending distance order.",
+            "Identifier linking a pair row to its SNP-variant rows.",
+        ),
         "sample_1": ("Sample-name column in core.tab.", "First sample in the pair."),
         "sample_2": ("Sample-name column in core.tab.", "Second sample in the pair."),
-        "snp_distance": ("Calculated from core.tab calls.", "Number of different A/C/G/T calls between the two samples."),
-        "comparable_core_sites": ("Calculated from core.tab calls.", "Positions where both samples have A, C, G or T and can be compared."),
-        "ignored_non_acgt_sites": ("Calculated from core.tab calls.", "Positions excluded because at least one call is not A, C, G or T."),
-        "core_tab_matrix_distance": ("core_tab_snp_distances.tsv: matrix cell for this pair.", "Distance independently calculated from core.tab, when the matrix is available."),
-        "core_tab_matrix_matches": ("Comparison of snp_distance and core_tab_matrix_distance.", "yes when both distances agree; no when they differ."),
-        "phylo_aln_distance": ("phylo_snp_distances.tsv: matrix cell for this pair.", "Distance in the phylogenetic alignment, when available."),
-        "phylo_matches_core_tab": ("Comparison of snp_distance and phylo_aln_distance.", "yes when both distances agree; no when they differ."),
-        "clean_core_aln_distance": ("clean_core_snp_distances.tsv: matrix cell for this pair.", "Distance after the clean/Gubbins-associated alignment, when available."),
-        "snps_removed_by_gubbins": ("snp_distance − clean_core_aln_distance.", "Differences no longer contributing to the clean-alignment distance."),
-        "clean_distance_valid": ("Comparison of clean_core_aln_distance and snp_distance.", "yes when the clean distance is not greater than the original distance."),
-        "distance_comparison_warnings": ("Calculated from the three distance-matrix comparisons.", "Semicolon-separated matrix discrepancies or missing-matrix warnings."),
-        "comparable_core_fraction": ("comparable_core_sites / (comparable_core_sites + ignored_non_acgt_sites).", "Fraction of core.tab positions usable for this pair."),
-        "matrix_availability": ("Presence of the three generated distance-matrix files.", "States whether core.tab, phylo and clean-core comparison matrices were available."),
+        "snp_distance": (
+            "Calculated from core.tab calls.",
+            "Number of different A/C/G/T calls between the two samples.",
+        ),
+        "comparable_core_sites": (
+            "Calculated from core.tab calls.",
+            "Positions where both samples have A, C, G or T and can be compared.",
+        ),
+        "ignored_non_acgt_sites": (
+            "Calculated from core.tab calls.",
+            "Positions excluded because at least one call is not A, C, G or T.",
+        ),
+        "core_tab_matrix_distance": (
+            "core_tab_snp_distances.tsv: matrix cell for this pair.",
+            "Distance independently calculated from core.tab, when the matrix is available.",
+        ),
+        "core_tab_matrix_matches": (
+            "Comparison of snp_distance and core_tab_matrix_distance.",
+            "yes when both distances agree; no when they differ.",
+        ),
+        "phylo_aln_distance": (
+            "phylo_snp_distances.tsv: matrix cell for this pair.",
+            "Distance in the phylogenetic alignment, when available.",
+        ),
+        "phylo_matches_core_tab": (
+            "Comparison of snp_distance and phylo_aln_distance.",
+            "yes when both distances agree; no when they differ.",
+        ),
+        "clean_core_aln_distance": (
+            "clean_core_snp_distances.tsv: matrix cell for this pair.",
+            "Distance after the clean/Gubbins-associated alignment, when available.",
+        ),
+        "snps_removed_by_gubbins": (
+            "snp_distance − clean_core_aln_distance.",
+            "Differences no longer contributing to the clean-alignment distance.",
+        ),
+        "clean_distance_valid": (
+            "Comparison of clean_core_aln_distance and snp_distance.",
+            "yes when the clean distance is not greater than the original distance.",
+        ),
+        "distance_comparison_warnings": (
+            "Calculated from the three distance-matrix comparisons.",
+            "Semicolon-separated matrix discrepancies or missing-matrix warnings.",
+        ),
+        "comparable_core_fraction": (
+            "comparable_core_sites / (comparable_core_sites + ignored_non_acgt_sites).",
+            "Fraction of core.tab positions usable for this pair.",
+        ),
+        "matrix_availability": (
+            "Presence of the three generated distance-matrix files.",
+            "States whether core.tab, phylo and clean-core comparison matrices were available.",
+        ),
         "chrom": ("core.tab: CHR.", "Chromosome identifier."),
         "pos": ("core.tab: POS.", "Genomic coordinate."),
         "core_ref": ("core.tab: REF.", "Reference base in core.tab."),
-        "sample_1_call": ("core.tab: sample_1 column at this position.", "Base called for sample_1."),
-        "sample_2_call": ("core.tab: sample_2 column at this position.", "Base called for sample_2."),
-        "pair_local_snp_count": ("Other differential core.tab sites for this pair within ±--cluster-window bp.", "Number of pair-specific SNPs in the local window, including this SNP."),
-        "pair_clustered_snp": ("pair_local_snp_count compared with --cluster-min-snps.", "yes when this SNP belongs to a local SNP cluster."),
-        "removed_by_gubbins": ("gubbins.recombination_predictions.gff coordinates.", "yes when the SNP lies in a predicted recombinant interval; only calculated automatically for a single-contig core.tab."),
-        "qc_warnings": ("QC checks on this row's VCF/BAM evidence and context.", "Semicolon-separated flags; they request review and do not remove the row."),
+        "sample_1_call": (
+            "core.tab: sample_1 column at this position.",
+            "Base called for sample_1.",
+        ),
+        "sample_2_call": (
+            "core.tab: sample_2 column at this position.",
+            "Base called for sample_2.",
+        ),
+        "pair_local_snp_count": (
+            "Other differential core.tab sites for this pair within ±--cluster-window bp.",
+            "Number of pair-specific SNPs in the local window, including this SNP.",
+        ),
+        "pair_clustered_snp": (
+            "pair_local_snp_count compared with --cluster-min-snps.",
+            "yes when this SNP belongs to a local SNP cluster.",
+        ),
+        "removed_by_gubbins": (
+            "gubbins.recombination_predictions.gff coordinates.",
+            "yes when the SNP lies in a predicted recombinant interval; only calculated automatically for a single-contig core.tab.",
+        ),
+        "qc_warnings": (
+            "QC checks on this row's VCF/BAM evidence and context.",
+            "Semicolon-separated flags; they request review and do not remove the row.",
+        ),
     }
     if column in definitions:
         return definitions[column]
@@ -828,40 +930,115 @@ def column_description(column: str) -> tuple[str, str]:
         prefix = f"sample_{number}_"
         if not column.startswith(prefix):
             continue
-        suffix = column[len(prefix):]
+        suffix = column[len(prefix) :]
         sample_label = f"sample_{number}"
         evidence = {
-            "evidence_status": ("VCF/BAM lookup result.", "How evidence was obtained: variant_record, reference_call_mpileup, or a missing-evidence status."),
-            "evidence_availability": ("evidence_status.", "available when VCF or BAM evidence was obtained; missing otherwise."),
-            "vcf_record_pos": ("snps.vcf: POS.", "Position of the supporting VCF record; blank for BAM-derived reference evidence."),
-            "vcf_ref": ("snps.vcf: REF; for BAM reference evidence, core_ref.", "Reference allele of the supporting record."),
-            "vcf_alt": ("snps.vcf: ALT; for BAM reference evidence, the other sample's call.", "Alternate allele associated with the comparison."),
+            "evidence_status": (
+                "VCF/BAM lookup result.",
+                "How evidence was obtained: variant_record, reference_call_mpileup, or a missing-evidence status.",
+            ),
+            "evidence_availability": (
+                "evidence_status.",
+                "available when VCF or BAM evidence was obtained; missing otherwise.",
+            ),
+            "vcf_record_pos": (
+                "snps.vcf: POS.",
+                "Position of the supporting VCF record; blank for BAM-derived reference evidence.",
+            ),
+            "vcf_ref": (
+                "snps.vcf: REF; for BAM reference evidence, core_ref.",
+                "Reference allele of the supporting record.",
+            ),
+            "vcf_alt": (
+                "snps.vcf: ALT; for BAM reference evidence, the other sample's call.",
+                "Alternate allele associated with the comparison.",
+            ),
             "qual": ("snps.vcf: QUAL.", "Variant quality reported by the caller."),
-            "filter": ("snps.vcf: FILTER.", "VCF filter status reported by the caller."),
+            "filter": (
+                "snps.vcf: FILTER.",
+                "VCF filter status reported by the caller.",
+            ),
             "genotype": ("snps.vcf: FORMAT/GT.", "Genotype recorded for this sample."),
-            "depth": ("snps.vcf: FORMAT/DP, otherwise INFO/DP; BAM reference evidence: mpileup depth.", "Total read depth used for allele fractions."),
-            "ref_count": ("snps.vcf: FORMAT/RO, otherwise INFO/RO; BAM reference evidence: parsed mpileup reference bases.", "Reads supporting the reference allele."),
-            "alt_count": ("snps.vcf: FORMAT/AO, otherwise INFO/AO; BAM reference evidence: parsed mpileup bases matching the other sample's call.", "Reads supporting the alternate allele."),
-            "variant_type": ("snps.vcf: INFO/TYPE; BAM reference evidence: reference_call.", "Variant type reported by the caller or reference-call label."),
-            "ref_forward_count": ("snps.raw.vcf: INFO/SRF; BAM reference evidence: parsed mpileup forward bases.", "Reference-supporting reads on the forward strand."),
-            "ref_reverse_count": ("snps.raw.vcf: INFO/SRR; BAM reference evidence: parsed mpileup reverse bases.", "Reference-supporting reads on the reverse strand."),
-            "alt_forward_count": ("snps.raw.vcf: INFO/SAF; BAM reference evidence: parsed mpileup forward bases.", "Alternate-supporting reads on the forward strand."),
-            "alt_reverse_count": ("snps.raw.vcf: INFO/SAR; BAM reference evidence: parsed mpileup reverse bases.", "Alternate-supporting reads on the reverse strand."),
-            "homopolymer_run": ("snps.raw.vcf: INFO/RUN.", "Homopolymer run length reported by FreeBayes."),
-            "nearest_indel_distance": ("snps.raw.vcf: positions with INFO/TYPE other than snp.", "Distance in bases to the nearest raw indel or complex call."),
-            "ref_fraction": ("ref_count / depth.", "Fraction of depth supporting the reference allele."),
-            "alt_fraction": ("alt_count / depth.", "Fraction of depth supporting the alternate allele."),
-            "called_allele": (f"core.tab: {sample_label} call.", "The base called for this sample at this SNP."),
-            "called_allele_count": ("ref_count when called_allele equals core_ref; otherwise alt_count.", "Read count supporting the called allele."),
-            "called_allele_fraction": ("called_allele_count / depth.", "Fraction of depth supporting the allele called in core.tab."),
-            "called_allele_forward_count": ("Reference or alternate forward count selected according to called_allele.", "Called-allele reads on the forward strand."),
-            "called_allele_reverse_count": ("Reference or alternate reverse count selected according to called_allele.", "Called-allele reads on the reverse strand."),
-            "called_allele_minor_strand_fraction": ("If the core.tab call equals core_ref: min(ref_forward_count, ref_reverse_count) / (ref_forward_count + ref_reverse_count); otherwise the same formula using alt_forward_count and alt_reverse_count.", "Fraction of called-allele reads on the less represented strand; lower values indicate stronger strand imbalance."),
-            "evidence_summary": ("Called-allele count, depth, fraction and strand counts above.", "Human-readable evidence summary for this sample and SNP."),
+            "depth": (
+                "snps.vcf: FORMAT/DP, otherwise INFO/DP; BAM reference evidence: mpileup depth.",
+                "Total read depth used for allele fractions.",
+            ),
+            "ref_count": (
+                "snps.vcf: FORMAT/RO, otherwise INFO/RO; BAM reference evidence: parsed mpileup reference bases.",
+                "Reads supporting the reference allele.",
+            ),
+            "alt_count": (
+                "snps.vcf: FORMAT/AO, otherwise INFO/AO; BAM reference evidence: parsed mpileup bases matching the other sample's call.",
+                "Reads supporting the alternate allele.",
+            ),
+            "variant_type": (
+                "snps.vcf: INFO/TYPE; BAM reference evidence: reference_call.",
+                "Variant type reported by the caller or reference-call label.",
+            ),
+            "ref_forward_count": (
+                "snps.raw.vcf: INFO/SRF; BAM reference evidence: parsed mpileup forward bases.",
+                "Reference-supporting reads on the forward strand.",
+            ),
+            "ref_reverse_count": (
+                "snps.raw.vcf: INFO/SRR; BAM reference evidence: parsed mpileup reverse bases.",
+                "Reference-supporting reads on the reverse strand.",
+            ),
+            "alt_forward_count": (
+                "snps.raw.vcf: INFO/SAF; BAM reference evidence: parsed mpileup forward bases.",
+                "Alternate-supporting reads on the forward strand.",
+            ),
+            "alt_reverse_count": (
+                "snps.raw.vcf: INFO/SAR; BAM reference evidence: parsed mpileup reverse bases.",
+                "Alternate-supporting reads on the reverse strand.",
+            ),
+            "homopolymer_run": (
+                "snps.raw.vcf: INFO/RUN.",
+                "Homopolymer run length reported by FreeBayes.",
+            ),
+            "nearest_indel_distance": (
+                "snps.raw.vcf: positions with INFO/TYPE other than snp.",
+                "Distance in bases to the nearest raw indel or complex call.",
+            ),
+            "ref_fraction": (
+                "ref_count / depth.",
+                "Fraction of depth supporting the reference allele.",
+            ),
+            "alt_fraction": (
+                "alt_count / depth.",
+                "Fraction of depth supporting the alternate allele.",
+            ),
+            "called_allele": (
+                f"core.tab: {sample_label} call.",
+                "The base called for this sample at this SNP.",
+            ),
+            "called_allele_count": (
+                "ref_count when called_allele equals core_ref; otherwise alt_count.",
+                "Read count supporting the called allele.",
+            ),
+            "called_allele_fraction": (
+                "called_allele_count / depth.",
+                "Fraction of depth supporting the allele called in core.tab.",
+            ),
+            "called_allele_forward_count": (
+                "Reference or alternate forward count selected according to called_allele.",
+                "Called-allele reads on the forward strand.",
+            ),
+            "called_allele_reverse_count": (
+                "Reference or alternate reverse count selected according to called_allele.",
+                "Called-allele reads on the reverse strand.",
+            ),
+            "called_allele_minor_strand_fraction": (
+                "If the core.tab call equals core_ref: min(ref_forward_count, ref_reverse_count) / (ref_forward_count + ref_reverse_count); otherwise the same formula using alt_forward_count and alt_reverse_count.",
+                "Fraction of called-allele reads on the less represented strand; lower values indicate stronger strand imbalance.",
+            ),
+            "evidence_summary": (
+                "Called-allele count, depth, fraction and strand counts above.",
+                "Human-readable evidence summary for this sample and SNP.",
+            ),
         }
         if suffix in evidence:
             return evidence[suffix]
-    return ("Column descriptions generated!")
+    return "Column descriptions generated!"
 
 
 def build_data_dictionary_rows(
@@ -888,7 +1065,6 @@ def build_data_dictionary_rows(
     return rows
 
 
-
 def read_tsv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     """Read a result TSV preserving its header order for a summary Excel worksheet"""
     with path.open(newline="") as handle:
@@ -896,32 +1072,51 @@ def read_tsv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
         return list(reader.fieldnames or []), list(reader)
 
 
-
 def excel_cell_value(header: str, value: str) -> int | float | str:
     """
     Convert quantitative result columns to Excel numbers to avoid issues when opening such file
     """
     numeric_columns = {
-        "pos", "snp_distance", "comparable_core_sites", "ignored_non_acgt_sites",
-        "core_tab_matrix_distance", "phylo_aln_distance", "clean_core_aln_distance",
-        "snps_removed_by_gubbins", "comparable_core_fraction", "pair_local_snp_count",
+        "pos",
+        "snp_distance",
+        "comparable_core_sites",
+        "ignored_non_acgt_sites",
+        "core_tab_matrix_distance",
+        "phylo_aln_distance",
+        "clean_core_aln_distance",
+        "snps_removed_by_gubbins",
+        "comparable_core_fraction",
+        "pair_local_snp_count",
     }
     numeric_suffixes = (
-        "_vcf_record_pos", "_qual", "_depth", "_ref_count", "_alt_count",
-        "_ref_forward_count", "_ref_reverse_count", "_alt_forward_count",
-        "_alt_reverse_count", "_homopolymer_run", "_nearest_indel_distance",
-        "_ref_fraction", "_alt_fraction", "_called_allele_count",
-        "_called_allele_fraction", "_called_allele_forward_count",
-        "_called_allele_reverse_count", "_called_allele_minor_strand_fraction",
+        "_vcf_record_pos",
+        "_qual",
+        "_depth",
+        "_ref_count",
+        "_alt_count",
+        "_ref_forward_count",
+        "_ref_reverse_count",
+        "_alt_forward_count",
+        "_alt_reverse_count",
+        "_homopolymer_run",
+        "_nearest_indel_distance",
+        "_ref_fraction",
+        "_alt_fraction",
+        "_called_allele_count",
+        "_called_allele_fraction",
+        "_called_allele_forward_count",
+        "_called_allele_reverse_count",
+        "_called_allele_minor_strand_fraction",
     )
-    if value in ("", "not_available") or (header not in numeric_columns and not header.endswith(numeric_suffixes)):
+    if value in ("", "not_available") or (
+        header not in numeric_columns and not header.endswith(numeric_suffixes)
+    ):
         return value
     try:
         numeric_value = float(value)
     except ValueError:
         return value
     return int(numeric_value) if numeric_value.is_integer() else numeric_value
-
 
 
 def style_table_worksheet(ws, headers: list[str], rows: list[dict[str, str]]) -> None:
@@ -944,10 +1139,16 @@ def style_table_worksheet(ws, headers: list[str], rows: list[dict[str, str]]) ->
             cell.alignment = Alignment(wrap_text=True, vertical="top")
     if headers:
         ws.freeze_panes = "A2"
-        ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{max(1, len(rows) + 1)}"
+        ws.auto_filter.ref = (
+            f"A1:{get_column_letter(len(headers))}{max(1, len(rows) + 1)}"
+        )
         for column, header in enumerate(headers, start=1):
-            longest = max([len(header)] + [len(str(row.get(header, ""))) for row in rows])
-            ws.column_dimensions[get_column_letter(column)].width = min(max(longest + 2, 12), 45)
+            longest = max(
+                [len(header)] + [len(str(row.get(header, ""))) for row in rows]
+            )
+            ws.column_dimensions[get_column_letter(column)].width = min(
+                max(longest + 2, 12), 45
+            )
 
 
 def write_excel_report(
@@ -990,12 +1191,32 @@ def write_excel_report(
         cell.fill = section_fill
     sheet_entries = [
         ("README", "This index of the workbook sheets.", "Start here."),
-        ("Close pairs", "One row per pair of samples retained below the requested SNP threshold.", "Use it to identify close pairs and inspect distance-matrix consistency."),
-        ("SNP variants", "One technical row for each SNP that differs within a retained pair.", "Use it for detailed VCF, BAM and QC evidence."),
+        (
+            "Close pairs",
+            "One row per pair of samples retained below the requested SNP threshold.",
+            "Use it to identify close pairs and inspect distance-matrix consistency.",
+        ),
+        (
+            "SNP variants",
+            "One technical row for each SNP that differs within a retained pair.",
+            "Use it for detailed VCF, BAM and QC evidence.",
+        ),
     ]
     if summary_path is not None:
-        sheet_entries.append(("Variant summary", "A compact version of the SNP-variant table.", "Use it for manual evaluation; consult SNP variants sheet to check all fields."))
-    sheet_entries.append(("Column descriptions", "Definition and exact source field or calculation for every output column.", "Check this sheet to find the meaning of each column field."))
+        sheet_entries.append(
+            (
+                "Variant summary",
+                "A compact version of the SNP-variant table.",
+                "Use it for manual evaluation; consult SNP variants sheet to check all fields.",
+            )
+        )
+    sheet_entries.append(
+        (
+            "Column descriptions",
+            "Definition and exact source field or calculation for every output column.",
+            "Check this sheet to find the meaning of each column field.",
+        )
+    )
     for entry in sheet_entries:
         readme.append(entry)
     for row in readme.iter_rows():
@@ -1024,7 +1245,6 @@ def write_excel_report(
     workbook.save(path)
 
 
-
 def sha256_file(path: Path) -> str | None:
     """Return a content hash for a present input file, otherwise ``None``."""
     if not path.is_file():
@@ -1036,7 +1256,15 @@ def sha256_file(path: Path) -> str | None:
     return digest.hexdigest()
 
 
-def write_metadata(path: Path, args: argparse.Namespace, core_tab: Path, pairs_path: Path, variants_path: Path, summary_path: Path | None, excel_path: Path | None) -> None:
+def write_metadata(
+    path: Path,
+    args: argparse.Namespace,
+    core_tab: Path,
+    pairs_path: Path,
+    variants_path: Path,
+    summary_path: Path | None,
+    excel_path: Path | None,
+) -> None:
     """Write provenance sufficient to interpret and reproduce a result table."""
     metadata = {
         "script": "evaluate_close_pairs.py",
@@ -1046,8 +1274,12 @@ def write_metadata(path: Path, args: argparse.Namespace, core_tab: Path, pairs_p
             key: str(value.resolve()) if isinstance(value, Path) else value
             for key, value in vars(args).items()
         },
-        "inputs": {"core_tab": {"path": str(core_tab), "sha256": sha256_file(core_tab)}},
-        "outputs": [str(pairs_path), str(variants_path)] + ([str(summary_path)] if summary_path else []) + ([str(excel_path)] if excel_path else []),
+        "inputs": {
+            "core_tab": {"path": str(core_tab), "sha256": sha256_file(core_tab)}
+        },
+        "outputs": [str(pairs_path), str(variants_path)]
+        + ([str(summary_path)] if summary_path else [])
+        + ([str(excel_path)] if excel_path else []),
     }
     path.write_text(json.dumps(metadata, indent=2) + "\n")
 
@@ -1379,8 +1611,13 @@ def main() -> int:
             excel_path = Path.cwd() / excel_path
         try:
             write_excel_report(
-                excel_path, pairs_path, variants_path, summary_path,
-                args, len(samples), len(sites),
+                excel_path,
+                pairs_path,
+                variants_path,
+                summary_path,
+                args,
+                len(samples),
+                len(sites),
             )
         except RuntimeError as error:
             print(f"WARNING: {error}", file=sys.stderr)
@@ -1388,7 +1625,15 @@ def main() -> int:
     metadata_path = None
     if not args.no_metadata:
         metadata_path = prefix.with_name(prefix.name + "_metadata.json")
-        write_metadata(metadata_path, args, core_tab, pairs_path, variants_path, summary_path, excel_path)
+        write_metadata(
+            metadata_path,
+            args,
+            core_tab,
+            pairs_path,
+            variants_path,
+            summary_path,
+            excel_path,
+        )
 
     variant_count = sum(len(pair["differences"]) for pair in pairs)
     print(f"Samples: {len(samples)}")
