@@ -153,12 +153,6 @@ def parse_args() -> argparse.Namespace:
         help="Do not write the human-readable variant summary table",
     )
     parser.add_argument(
-        "--no-column-descriptions",
-        dest="no_data_dictionary",
-        action="store_true",
-        help="Do not write the TSV column descriptions",
-    )
-    parser.add_argument(
         "--no-metadata",
         action="store_true",
         help="Do not write the JSON run metadata and provenance file",
@@ -879,20 +873,28 @@ def column_description(column: str) -> tuple[str, str]:
     return ("Column descriptions generated!")
 
 
-def write_data_dictionary(path: Path, pairs_path: Path, variants_path: Path, summary_path: Path | None) -> None:
-    """Create a versioned TSV dictionary from the actual headers written"""
+def build_data_dictionary_rows(
+    pairs_path: Path, variants_path: Path, summary_path: Path | None
+) -> list[dict[str, str]]:
+    """Build column descriptions for display in the Excel report only."""
     tables = [(pairs_path.name, pairs_path), (variants_path.name, variants_path)]
     if summary_path is not None:
         tables.append((summary_path.name, summary_path))
-    with path.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["table", "column", "source_field_or_calculation", "meaning"], delimiter="\t")
-        writer.writeheader()
-        for table_name, table_path in tables:
-            with table_path.open(newline="") as table:
-                headers = next(csv.reader(table, delimiter="\t"), [])
-            for column in headers:
-                source, description = column_description(column)
-                writer.writerow({"table": table_name, "column": column, "source_field_or_calculation": source, "meaning": description})
+    rows = []
+    for table_name, table_path in tables:
+        with table_path.open(newline="") as table:
+            headers = next(csv.reader(table, delimiter="\t"), [])
+        for column in headers:
+            source, description = column_description(column)
+            rows.append(
+                {
+                    "table": table_name,
+                    "column": column,
+                    "source_field_or_calculation": source,
+                    "meaning": description,
+                }
+            )
+    return rows
 
 
 
@@ -962,7 +964,6 @@ def write_excel_report(
     pairs_path: Path,
     variants_path: Path,
     summary_path: Path | None,
-    dictionary_path: Path | None,
     args: argparse.Namespace,
     sample_count: int,
     core_site_count: int,
@@ -1003,8 +1004,7 @@ def write_excel_report(
     ]
     if summary_path is not None:
         sheet_entries.append(("Variant summary", "A compact version of the SNP-variant table.", "Use it for manual evaluation; consult SNP variants sheet to check all fields."))
-    if dictionary_path is not None:
-        sheet_entries.append(("Column descriptions", "Definition and exact source field or calculation for every output column.", "Check this sheet to find the meaning of each column field."))
+    sheet_entries.append(("Column descriptions", "Definition and exact source field or calculation for every output column.", "Check this sheet to find the meaning of each column field."))
     for entry in sheet_entries:
         readme.append(entry)
     for row in readme.iter_rows():
@@ -1020,12 +1020,16 @@ def write_excel_report(
     ]
     if summary_path is not None:
         sheets.append(("Variant summary", summary_path))
-    if dictionary_path is not None:
-        sheets.append(("Column descriptions", dictionary_path))
     for sheet_name, table_path in sheets:
         worksheet = workbook.create_sheet(sheet_name)
         headers, rows = read_tsv_rows(table_path)
         style_table_worksheet(worksheet, headers, rows)
+    dictionary = workbook.create_sheet("Column descriptions")
+    style_table_worksheet(
+        dictionary,
+        ["table", "column", "source_field_or_calculation", "meaning"],
+        build_data_dictionary_rows(pairs_path, variants_path, summary_path),
+    )
     workbook.save(path)
 
 
@@ -1377,10 +1381,6 @@ def main() -> int:
     if not args.no_summary:
         summary_path = prefix.with_name(prefix.name + "_variants_summary.tsv")
         write_variant_summary(summary_path, variant_rows)
-    dictionary_path = None
-    if not args.no_data_dictionary:
-        dictionary_path = prefix.with_name(prefix.name + "_column_descriptions.tsv")
-        write_data_dictionary(dictionary_path, pairs_path, variants_path, summary_path)
     excel_path = None
     if not args.no_excel:
         excel_path = args.excel_output or prefix.with_name(prefix.name + "_report.xlsx")
@@ -1388,7 +1388,7 @@ def main() -> int:
             excel_path = Path.cwd() / excel_path
         try:
             write_excel_report(
-                excel_path, pairs_path, variants_path, summary_path, dictionary_path,
+                excel_path, pairs_path, variants_path, summary_path,
                 args, len(samples), len(sites),
             )
         except RuntimeError as error:
@@ -1408,8 +1408,6 @@ def main() -> int:
     print(f"Wrote: {variants_path}")
     if summary_path:
         print(f"Wrote: {summary_path}")
-    if dictionary_path:
-        print(f"Wrote: {dictionary_path}")
     if excel_path:
         print(f"Wrote: {excel_path}")
     if metadata_path:
