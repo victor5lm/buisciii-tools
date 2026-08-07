@@ -467,10 +467,10 @@ def read_bam_pileup(
 
     Sites are written as 0-based half-open BED intervals. Mapping quality
     (``-q``) and base quality (``-Q``) are applied before parsing A/C/G/T
-    support and strand orientation from the read-bases field. This tool is 
+    support and strand orientation from the read-bases field. This tool is
     run without skipping anomalous read pairs (-A), disabling base alignment
-    quality (BAQ) computation (-B) and disabling overlap detection and removal (-x), 
-    with the objective of obtaining results as similar as the ones that samtools depth 
+    quality (BAQ) computation (-B) and disabling overlap detection and removal (-x),
+    with the objective of obtaining results as similar as the ones that samtools depth
     would report, which is the tool being employed by snippy to mask low-depth positions.
     """
     if not positions:
