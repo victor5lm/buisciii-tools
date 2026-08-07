@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Find closely related Snippy samples and report their differing SNPs.
 
-Distances are calculated directly from snippy-core's core.tab.  For each pair
+Distances are calculated directly from snippy-core's core.tab. For each pair
 below the requested threshold, the script looks up supporting read counts in
 each sample's snps.vcf (or snps.vcf.gz). Reference calls, which are absent
 from variant-only VCFs, are measured from snps.bam with samtools mpileup.
@@ -467,7 +467,11 @@ def read_bam_pileup(
 
     Sites are written as 0-based half-open BED intervals. Mapping quality
     (``-q``) and base quality (``-Q``) are applied before parsing A/C/G/T
-    support and strand orientation from the read-bases field.
+    support and strand orientation from the read-bases field. This tool is 
+    run without skipping anomalous read pairs (-A), disabling base alignment
+    quality (BAQ) computation (-B) and disabling overlap detection and removal (-x), 
+    with the objective of obtaining results as similar as the ones that samtools depth 
+    would report, which is the tool being employed by snippy to mask low-depth positions.
     """
     if not positions:
         return {}
@@ -478,6 +482,9 @@ def read_bam_pileup(
         command = [
             samtools,
             "mpileup",
+            "-A",
+            "-B",
+            "-x",
             "-q",
             str(minimum_mapq),
             "-Q",
@@ -782,19 +789,24 @@ def enhance_output_tables(
         if (not field.startswith("sample_") or field in ("sample_1", "sample_2"))
         and field != "qc_warnings"
     ]
+    ordered_context_fields = []
+    for field in context_fields:
+        ordered_context_fields.append(field)
+        if field == "core_ref":
+            ordered_context_fields.extend(("sample_1_call", "sample_2_call"))
+        if field == "removed_by_gubbins":
+            ordered_context_fields.append("qc_warnings")
     sample_1_fields = [
         field
         for field in variant_fields + derived_fields
-        if field.startswith("sample_1_")
+        if field.startswith("sample_1_") and field != "sample_1_call"
     ]
     sample_2_fields = [
         field
         for field in variant_fields + derived_fields
-        if field.startswith("sample_2_")
+        if field.startswith("sample_2_") and field != "sample_2_call"
     ]
-    ordered_variant_fields = (
-        context_fields + sample_1_fields + sample_2_fields + ["qc_warnings"]
-    )
+    ordered_variant_fields = ordered_context_fields + sample_1_fields + sample_2_fields
     with tempfile.NamedTemporaryFile(
         "w", newline="", dir=variants_path.parent, delete=False
     ) as temporary:
@@ -824,6 +836,7 @@ def write_variant_summary(path: Path, rows: list[dict[str, str]]) -> None:
         "sample_2_evidence_summary",
         "removed_by_gubbins",
         "pair_clustered_snp",
+        "qc_warnings",
     ]
     with path.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t")
