@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Force interactive plots for MultiQC [#727](https://github.com/BU-ISCIII/buisciii-tools/pull/727).
 - Fix nextflow's version for viralrecon's _00_autorun.sh file [#728](https://github.com/BU-ISCIII/buisciii-tools/pull/728).
 - Updated summary report creation script to take nextclade's tag from pathogen.json [#730](https://github.com/BU-ISCIII/buisciii-tools/pull/730).
+- Fixed wrong path for summary_assembly_metrics_mqc.csv in lablog_assembly_results [#732](https://github.com/BU-ISCIII/buisciii-tools/pull/732).
 
 ### Modules
 
