@@ -1,105 +1,127 @@
 #!/usr/bin/env bash
 
-OUTPUT="irma_stats_flu.txt"
+echo -e "sample_ID\tTotalReads\tMappedReads\t%MappedReads\tFlu_type\tReads_HA\tReads_MP\tReads_NA\tReads_NP\tReads_NS\tReads_PA\tReads_PB1\tReads_PB2" > irma_stats_flu.txt
 
-echo -e "sample_ID\tTotalReads\tMappedReads\t%MappedReads\tFlu_type\tReads_HA\tReads_MP\tReads_NA\tReads_NP\tReads_NS\tReads_PA\tReads_PB1\tReads_PB2" > "$OUTPUT"
+cat ../samples_id.txt | while read in
+do
+    SAMPLE_ID=$(echo ${in})
+    TOTAL_READS=""; MAPPEDREADS=""; PCTMAPPED=""; FLU_TYPE=""; HA=""; MP=""; NA=""; NP=""; NS=""; PA=""; PB1=""; PB2=""; HE=""; MAIN_HA=""; MAIN_NA=""
+    COUNTS_FILE=${in}/tables/READ_COUNTS.txt
+    SECONDARY_ASSEMBLY=0
 
-while read -r in; do
-    [[ -z "$in" ]] && continue
-
-    SAMPLE_ID="$in"
-    FILE="${in}/tables/READ_COUNTS.txt"
-
-    if [[ -f "$FILE" ]]; then
-        read -r TOTAL_READS MAPPEDREADS PCTMAPPED < <(
-            awk -F'\t' '
-                $1=="1-initial" {t=$2}
-                $1=="3-match"   {m=$2}
-                END {
-                    t += 0
-                    m += 0
-
-                    if (t > 0) {
-                        pct = (m / t) * 100
-                    } else {
-                        pct = 0
-                    }
-
-                    printf "%d %d %.2f\n", t, m, pct
-                }
-            ' "$FILE"
-        )
-
-        FLU_TYPE=$(paste \
-            <(grep '4-[A-C]' "$FILE" | cut -f1 | cut -d_ -f1 | cut -d- -f2 | head -n1) \
-            <(grep '4-[A-B]_HA' "$FILE" | cut -f1 | cut -d_ -f3 | cut -d- -f2) \
-            <(grep '4-[A-B]_NA' "$FILE" | cut -f1 | cut -d_ -f3) \
-            | tr '\t' '_' \
-            | sed 's/_*$//'
-        )
-
-        HA=$(grep -m1 '4-[A-C]_HA' "$FILE" | cut -f2)
-        MP=$(grep -m1 '4-[A-C]_MP' "$FILE" | cut -f2)
-        NA=$(grep -m1 '4-[A-C]_NA' "$FILE" | cut -f2)
-        NP=$(grep -m1 '4-[A-C]_NP' "$FILE" | cut -f2)
-        NS=$(grep -m1 '4-[A-C]_NS' "$FILE" | cut -f2)
-        PA=$(grep -m1 '4-[A-C]_PA' "$FILE" | cut -f2)
-        PB1=$(grep -m1 '4-[A-C]_PB1' "$FILE" | cut -f2)
-        PB2=$(grep -m1 '4-[A-C]_PB2' "$FILE" | cut -f2)
-        HE=$(grep -m1 '4-C_HE' "$FILE" | cut -f2)
-
-        if [[ -n "$HE" ]]; then
-            printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-                "$SAMPLE_ID" \
-                "$TOTAL_READS" \
-                "$MAPPEDREADS" \
-                "$PCTMAPPED" \
-                "$FLU_TYPE" \
-                "$HA" \
-                "$MP" \
-                "$NA" \
-                "$NP" \
-                "$NS" \
-                "$PA" \
-                "$PB1" \
-                "$PB2" \
-                "$HE" \
-                >> "$OUTPUT"
-        else
-            printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-                "$SAMPLE_ID" \
-                "$TOTAL_READS" \
-                "$MAPPEDREADS" \
-                "$PCTMAPPED" \
-                "$FLU_TYPE" \
-                "$HA" \
-                "$MP" \
-                "$NA" \
-                "$NP" \
-                "$NS" \
-                "$PA" \
-                "$PB1" \
-                "$PB2" \
-                >> "$OUTPUT"
-        fi
-
-    else
-        echo "Sample $SAMPLE_ID doesn't have READ_COUNTS.txt file. Skipping"
-
-        printf "%s\tNA\t0\t0.00\t\t\t\t\t\t\t\t\t\n" \
-            "$SAMPLE_ID" \
-            >> "$OUTPUT"
+    # Check if the sample has a secondary assembly and use its READ_COUNTS.txt if it exists
+    if test -f ${in}/secondary_assembly/tables/READ_COUNTS.txt; then
+        COUNTS_FILE=${in}/secondary_assembly/tables/READ_COUNTS.txt
+        SECONDARY_ASSEMBLY=1
     fi
 
-done < ../samples_id.txt
+    if test -f ${COUNTS_FILE}; then
+        TOTAL_READS=$(grep '1-initial' ${COUNTS_FILE} | cut -f2)
+        MAPPEDREADS=$(grep '3-match' ${COUNTS_FILE} | cut -f2)
+        PCTMAPPED=$(awk "BEGIN {printf \"%.2f\", ($MAPPEDREADS/$TOTAL_READS)*100}")
+        FLU_TYPE=$(paste <(grep '4-[A-C]' ${COUNTS_FILE} | cut -f1 | cut -d '_' -f1 | cut -d '-' -f2 | head -n1 ) <(grep '4-[A-B]_HA' ${COUNTS_FILE} | cut -f1 | cut -d '_' -f3 | cut -d '-' -f2) <(grep '4-[A-B]_NA' ${COUNTS_FILE} | cut -f1 | cut -d '_' -f3) | tr '\t' '_' | sed 's/_*$//')
+        HA=$(grep '4-[A-C]_HA' ${COUNTS_FILE} | cut -f2)
+        MP=$(grep '4-[A-C]_MP' ${COUNTS_FILE} | cut -f2)
+        NA=$(grep '4-[A-C]_NA' ${COUNTS_FILE} | cut -f2)
+        NP=$(grep '4-[A-C]_NP' ${COUNTS_FILE} | cut -f2)
+        NS=$(grep '4-[A-C]_NS' ${COUNTS_FILE} | cut -f2)
+        PA=$(grep '4-[A-C]_PA' ${COUNTS_FILE} | cut -f2)
+        PB1=$(grep '4-[A-C]_PB1' ${COUNTS_FILE} | cut -f2)
+        PB2=$(grep '4-[A-C]_PB2' ${COUNTS_FILE} | cut -f2)
+        #In case of Influenza C in samples:
+        HE=$(grep '4-C_HE' ${COUNTS_FILE} | cut -f2)
 
-if awk -F'\t' '
-    NR > 1 && NF >= 14 && $14 != "" {
-        found = 1
-    }
-    END {
-        exit(found ? 0 : 1)
-    }
-' "$OUTPUT"; then
-    sed -i '1s/Reads_PB2$/Reads_PB2\tReads_HE/' "$OUTPUT"
+        # For secondary assemblies, use the most abundant HA and NA in the main row.
+        if [[ ${SECONDARY_ASSEMBLY} -eq 1 ]]; then
+            MAIN_HA=$(grep '4-[A-C]_HA' ${COUNTS_FILE} | sort -t$'\t' -k2,2nr | head -n1)
+            MAIN_NA=$(grep '4-[A-C]_NA' ${COUNTS_FILE} | sort -t$'\t' -k2,2nr | head -n1)
+
+            if [[ -n "${MAIN_HA}" && -n "${MAIN_NA}" ]]; then
+                HA=$(printf "%s\n" "${MAIN_HA}" | cut -f2)
+                NA=$(printf "%s\n" "${MAIN_NA}" | cut -f2)
+                FLU_PREFIX=$(grep '4-[A-C]' ${COUNTS_FILE} | cut -f1 | cut -d '_' -f1 | cut -d '-' -f2 | head -n1)
+                HA_TYPE=$(printf "%s\n" "${MAIN_HA}" | cut -f1 | cut -d _ -f3)
+                NA_TYPE=$(printf "%s\n" "${MAIN_NA}" | cut -f1 | cut -d _ -f3)
+                FLU_TYPE=$(printf '%s_%s_%s' ${FLU_PREFIX} ${HA_TYPE} ${NA_TYPE} | sed 's/_*$//')
+            fi
+        fi
+
+        if [[ -n "$HE" ]]; then
+            LINE=$(paste <(echo $SAMPLE_ID) <(echo $TOTAL_READS) <(echo $MAPPEDREADS) <(echo $PCTMAPPED) <(echo $FLU_TYPE) <(echo $HA) <(echo $MP) <(echo $NA) <(echo $NP) <(echo $NS) <(echo $PA) <(echo $PB1) <(echo $PB2) <(echo $HE))
+        else
+            LINE=$(paste <(echo $SAMPLE_ID) <(echo $TOTAL_READS) <(echo $MAPPEDREADS) <(echo $PCTMAPPED) <(echo $FLU_TYPE) <(echo $HA) <(echo $MP) <(echo $NA) <(echo $NP) <(echo $NS) <(echo $PA) <(echo $PB1) <(echo $PB2))
+        fi
+    else
+        echo "Sample $SAMPLE_ID doesn't have READ_COUNTS.txt file. Skipping"
+        TOTAL_READS=NA
+        MAPPEDREADS=0
+        PCTMAPPED=0
+        LINE=$(paste <(echo $SAMPLE_ID) <(echo $TOTAL_READS) <(echo $MAPPEDREADS) <(echo $PCTMAPPED))
+    fi
+
+    if [[ ${SECONDARY_ASSEMBLY} -eq 1 ]]; then
+        # Report every influenza type independently in a secondary assembly.
+        for FLU_PREFIX in $(grep '^4-[A-C]_' ${COUNTS_FILE} | cut -f1 | cut -d '_' -f1 | cut -d '-' -f2 | sort -u)
+        do
+            TYPE_MAPPEDREADS=$(grep "^4-${FLU_PREFIX}_" ${COUNTS_FILE} | cut -f2 | awk '{sum += $1} END {print sum + 0}')
+            TYPE_PCTMAPPED=$(awk "BEGIN {printf \"%.2f\", (${TYPE_MAPPEDREADS}/${TOTAL_READS})*100}")
+            MAIN_HA=$(grep "^4-${FLU_PREFIX}_HA" ${COUNTS_FILE} | sort -t$'\t' -k2,2nr | head -n1)
+            MAIN_NA=$(grep "^4-${FLU_PREFIX}_NA" ${COUNTS_FILE} | sort -t$'\t' -k2,2nr | head -n1)
+            TYPE_HA=$(printf "%s\n" "${MAIN_HA}" | cut -f2)
+            TYPE_NA=$(printf "%s\n" "${MAIN_NA}" | cut -f2)
+            TYPE_MP=$(grep "^4-${FLU_PREFIX}_MP" ${COUNTS_FILE} | cut -f2)
+            TYPE_NP=$(grep "^4-${FLU_PREFIX}_NP" ${COUNTS_FILE} | cut -f2)
+            TYPE_NS=$(grep "^4-${FLU_PREFIX}_NS" ${COUNTS_FILE} | cut -f2)
+            TYPE_PA=$(grep "^4-${FLU_PREFIX}_PA" ${COUNTS_FILE} | cut -f2)
+            TYPE_PB1=$(grep "^4-${FLU_PREFIX}_PB1" ${COUNTS_FILE} | cut -f2)
+            TYPE_PB2=$(grep "^4-${FLU_PREFIX}_PB2" ${COUNTS_FILE} | cut -f2)
+            TYPE_HE=$(grep "^4-${FLU_PREFIX}_HE" ${COUNTS_FILE} | cut -f2)
+            TYPE_FLU_TYPE=${FLU_PREFIX}
+
+            # Influenza A has HA and NA subtypes; B and C are reported by type.
+            if [[ "${FLU_PREFIX}" == "A" && -n "${MAIN_HA}" && -n "${MAIN_NA}" ]]; then
+                HA_TYPE=$(printf "%s\n" "${MAIN_HA}" | cut -f1 | cut -d _ -f3 | cut -d - -f2)
+                NA_TYPE=$(printf "%s\n" "${MAIN_NA}" | cut -f1 | cut -d _ -f3)
+                TYPE_FLU_TYPE=$(printf '%s_%s_%s' ${FLU_PREFIX} ${HA_TYPE} ${NA_TYPE})
+            fi
+
+            if [[ -n "${TYPE_HE}" ]]; then
+                TYPE_LINE=$(paste <(echo $SAMPLE_ID) <(echo $TOTAL_READS) <(echo $TYPE_MAPPEDREADS) <(echo $TYPE_PCTMAPPED) <(echo $TYPE_FLU_TYPE) <(echo $TYPE_HA) <(echo $TYPE_MP) <(echo $TYPE_NA) <(echo $TYPE_NP) <(echo $TYPE_NS) <(echo $TYPE_PA) <(echo $TYPE_PB1) <(echo $TYPE_PB2) <(echo $TYPE_HE))
+            else
+                TYPE_LINE=$(paste <(echo $SAMPLE_ID) <(echo $TOTAL_READS) <(echo $TYPE_MAPPEDREADS) <(echo $TYPE_PCTMAPPED) <(echo $TYPE_FLU_TYPE) <(echo $TYPE_HA) <(echo $TYPE_MP) <(echo $TYPE_NA) <(echo $TYPE_NP) <(echo $TYPE_NS) <(echo $TYPE_PA) <(echo $TYPE_PB1) <(echo $TYPE_PB2))
+            fi
+            echo "$TYPE_LINE" >> irma_stats_flu.txt
+
+            # Add the minor A HA and NA subtypes without repeating shared segments.
+            if [[ "${FLU_PREFIX}" == "A" && -n "${MAIN_HA}" && -n "${MAIN_NA}" ]]; then
+                MAIN_HA_NAME=$(printf "%s\n" "${MAIN_HA}" | cut -f1)
+                MAIN_NA_NAME=$(printf "%s\n" "${MAIN_NA}" | cut -f1)
+
+                grep "^4-${FLU_PREFIX}_HA_" ${COUNTS_FILE} | while IFS=$'\t' read NAME READS REST
+                do
+                    if [[ "${NAME}" != "${MAIN_HA_NAME}" ]]; then
+                        TYPE=$(echo ${NAME} | cut -d '_' -f3 | cut -d '-' -f2)
+                        PCT=$(awk "BEGIN {printf \"%.2f\", (${READS}/${TOTAL_READS})*100}")
+                        printf '%s\t%s\t%s\t%s\t%s_%s\t%s\n' "$SAMPLE_ID" "$TOTAL_READS" "$READS" "$PCT" "$FLU_PREFIX" "$TYPE" "$READS" >> irma_stats_flu.txt
+                    fi
+                done
+
+                grep "^4-${FLU_PREFIX}_NA_" ${COUNTS_FILE} | while IFS=$'\t' read NAME READS REST
+                do
+                    if [[ "${NAME}" != "${MAIN_NA_NAME}" ]]; then
+                        TYPE=$(echo ${NAME} | cut -d '_' -f3)
+                        PCT=$(awk "BEGIN {printf \"%.2f\", (${READS}/${TOTAL_READS})*100}")
+                        printf '%s\t%s\t%s\t%s\t%s_%s\t\t\t%s\n' "$SAMPLE_ID" "$TOTAL_READS" "$READS" "$PCT" "$FLU_PREFIX" "$TYPE" "$READS" >> irma_stats_flu.txt
+                    fi
+                done
+            fi
+        done
+    else
+        echo "$LINE" >> irma_stats_flu.txt
+    fi
+done
+
+ANY_C=$(cut -f5 irma_stats_flu.txt | grep -x C)
+if [[ -n "$ANY_C" ]]; then
+    sed -i 's/Reads_PB2/Reads_PB2\tReads_HE/g' irma_stats_flu.txt
 fi
