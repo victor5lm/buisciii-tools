@@ -12,7 +12,7 @@ should be updated or not.
 
 This module can be run in different modes:
 
-- buisciii download-software: will check and, if applicable, download the latest 
+- buisciii download-software: will check and, if applicable, download the latest
 software version of all the tools that are employed by the service templates.
 
 - buisciii download-software -p XXX -i YYY: will check and, if necessary, download the
@@ -84,6 +84,7 @@ class SingularityImage:
         filename (str): Image reference relative to the configured image folder.
         source_file (str): Service template containing the image of interest.
     """
+
     name: str
     version: str
     filename: str
@@ -100,6 +101,7 @@ class GalaxyImage:
         filename (str): URL-decoded filename used for the local download.
         url (str): Download URL resolved against the configured index URL.
     """
+
     name: str
     version: str
     filename: str
@@ -116,6 +118,7 @@ class NfCorePipeline:
             names on disk. The fallback need not be the version actually in use.
         source_file (str): Service template containing the pipeline reference.
     """
+
     name: str
     version: str
     source_file: str
@@ -140,7 +143,7 @@ class HrefParser(html.parser.HTMLParser):
                 self.hrefs.append(value)
 
 
-# The following functions are for general purposes and therefore do not depend on the HPC 
+# The following functions are for general purposes and therefore do not depend on the HPC
 # or the service templates. Given that, they are written here without pertaining to any class.
 def parse_software_filter(values, option):
     """
@@ -155,7 +158,9 @@ def parse_software_filter(values, option):
         for item in value.split(","):
             name = item.strip().lower()
             if not name:
-                raise ValueError(f"{option} requires non-empty names separated by commas")
+                raise ValueError(
+                    f"{option} requires non-empty names separated by commas"
+                )
             names.add(name)
     return names
 
@@ -222,6 +227,7 @@ def latest_by_name(items):
             latest[item.name] = item
     return latest
 
+
 # Main class to be employed when running this module.
 class DownloadSoftware:
     """
@@ -277,11 +283,15 @@ class DownloadSoftware:
         self.nf_core_compress = self.settings.get("nf_core_compress", "none")
         self.nf_core_tools_version = None
         if self.nf_core_cache_mode not in {"amend", "copy", "remote"}:
-            raise ValueError("nf_core_cache_mode must be one from these: amend, copy or remote")
+            raise ValueError(
+                "nf_core_cache_mode must be one from these: amend, copy or remote"
+            )
         if self.nf_core_cache_mode == "remote":
             if not self.nf_core_cache_index:
                 raise ValueError("remote cache mode requires nf_core_cache_index")
-            self.nf_core_cache_index = str(Path(self.nf_core_cache_index).expanduser().resolve())
+            self.nf_core_cache_index = str(
+                Path(self.nf_core_cache_index).expanduser().resolve()
+            )
             if not Path(self.nf_core_cache_index).is_file():
                 raise FileNotFoundError(self.nf_core_cache_index)
         self.templates_path = Path(
@@ -301,7 +311,7 @@ class DownloadSoftware:
         This function runs the software update check and optional downloads.
 
         It uses the image and pipeline filters indicated by the user
-        to decide what to check. If neither filter is supplied, 
+        to decide what to check. If neither filter is supplied,
         it checks both images and pipelines.
 
         It finds software references in the templates and calls the methods that
@@ -333,9 +343,14 @@ class DownloadSoftware:
         rows = image_rows + pipeline_rows
         downloaded = sum(row["status"] == "downloaded" for row in rows)
         if self.check_only or self.dry_run:
-            log.info("Software check completed successfully; no downloads were performed.")
+            log.info(
+                "Software check completed successfully; no downloads were performed."
+            )
         else:
-            log.info("Software download run completed successfully. Successful downloads: %s.", downloaded)
+            log.info(
+                "Software download run completed successfully. Successful downloads: %s.",
+                downloaded,
+            )
         stderr.print(
             f"[green]\nDOWNLOAD-SOFTWARE has finished. Log directory: {self.logs_path}",
             highlight=False,
@@ -361,7 +376,9 @@ class DownloadSoftware:
         Raises FileNotFoundError if the templates directory does not exist.
         """
         if not self.templates_path.exists():
-            raise FileNotFoundError(f"Templates path does not exist: {self.templates_path}")
+            raise FileNotFoundError(
+                f"Templates path does not exist: {self.templates_path}"
+            )
         for path in self.templates_path.rglob("*"):
             if path.is_file():
                 yield path
@@ -419,7 +436,9 @@ class DownloadSoftware:
                 continue
             if self.image_filter and name not in self.image_filter:
                 continue
-            images.append(GalaxyImage(name, version, filename, urljoin(self.depot_url, href)))
+            images.append(
+                GalaxyImage(name, version, filename, urljoin(self.depot_url, href))
+            )
         log.info("Found %s Galaxy image candidates", len(images))
         return images
 
@@ -444,13 +463,18 @@ class DownloadSoftware:
                 if parse_version(candidate.version) == parse_version(image.version):
                     log.info(
                         "Template already uses the latest available version: %s %s (source: %s)",
-                        image.name, image.version, image.source_file,
+                        image.name,
+                        image.version,
+                        image.source_file,
                     )
                 else:
                     log.info(
                         "No newer Galaxy version found for template reference: %s %s "
                         "(Galaxy candidate: %s; template: %s)",
-                        image.name, image.version, candidate.version, image.source_file,
+                        image.name,
+                        image.version,
+                        candidate.version,
+                        image.source_file,
                     )
                 continue
             destination = self.singularity_images_path / candidate.filename
@@ -527,11 +551,15 @@ class DownloadSoftware:
                 raw_name = match.group(1).split("/", 1)[0]
                 name = re.sub(r"[-_]\d.*$", "", raw_name).lower()
                 version_match = version_pattern.search(match.group(0))
-                version = version_match.group(1).replace("_", ".") if version_match else None
+                version = (
+                    version_match.group(1).replace("_", ".") if version_match else None
+                )
                 if version is None:
                     version = self.find_pipeline_version_on_disk(name)
                 if version is None:
-                    log.warning("Could not detect nf-core version for %s in %s", name, path)
+                    log.warning(
+                        "Could not detect nf-core version for %s in %s", name, path
+                    )
                     continue
                 if self.pipeline_filter and name not in self.pipeline_filter:
                     continue
@@ -552,12 +580,16 @@ class DownloadSoftware:
         for child in pipeline_dir.iterdir():
             if not child.is_dir():
                 continue
-            match = re.search(rf"nf-core-{re.escape(name)}[-_](\d+(?:[._]\d+)*)", child.name)
+            match = re.search(
+                rf"nf-core-{re.escape(name)}[-_](\d+(?:[._]\d+)*)", child.name
+            )
             if match:
                 versions.append(match.group(1).replace("_", "."))
         if not versions:
             return None
-        return sorted(versions, key=lambda version: parse_version(version) or Version("0"))[-1]
+        return sorted(
+            versions, key=lambda version: parse_version(version) or Version("0")
+        )[-1]
 
     def process_nf_core_pipelines(self, pipelines):
         """
@@ -578,7 +610,9 @@ class DownloadSoftware:
             if latest is None:
                 continue
             if not version_is_newer(latest, pipeline.version):
-                log.info("nf-core/%s is up to date: %s", pipeline.name, pipeline.version)
+                log.info(
+                    "nf-core/%s is up to date: %s", pipeline.name, pipeline.version
+                )
                 continue
             existing = self.find_nf_core_version(pipeline.name, latest)
             destination = existing or self.nf_core_destination(pipeline.name, latest)
@@ -642,9 +676,7 @@ class DownloadSoftware:
         if not pipeline_dir.exists():
             return None
         version_token = re.escape(version).replace(r"\.", "[._]")
-        pattern = re.compile(
-            rf"(?:nf-core-{re.escape(name)}[-_])?{version_token}"
-        )
+        pattern = re.compile(rf"(?:nf-core-{re.escape(name)}[-_])?{version_token}")
         for child in sorted(pipeline_dir.iterdir()):
             if child.is_dir() and pattern.fullmatch(child.name):
                 return child
@@ -662,10 +694,15 @@ class DownloadSoftware:
         if self.nf_core_env != "auto" or self.nf_core_prefix is not None:
             return
         if shutil.which("micromamba") is None:
-            raise RuntimeError("micromamba command not found; automatic nf-core selection requires it to be installed")
+            raise RuntimeError(
+                "micromamba command not found; automatic nf-core selection requires it to be installed"
+            )
         result = subprocess.run(
             ["micromamba", "env", "list", "--json"],
-            check=True, capture_output=True, text=True, timeout=60,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         environments = json.loads(result.stdout)["envs"]
         candidates = []
@@ -677,13 +714,26 @@ class DownloadSoftware:
                 continue
             try:
                 result = subprocess.run(
-                    ["micromamba", "run", "-p", str(path), str(path / "bin" / "python"), "-c", script],
-                    check=True, capture_output=True, text=True, timeout=60,
+                    [
+                        "micromamba",
+                        "run",
+                        "-p",
+                        str(path),
+                        str(path / "bin" / "python"),
+                        "-c",
+                        script,
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
                 )
                 version = Version(json.loads(result.stdout))
             except (subprocess.SubprocessError, OSError, ValueError, TypeError) as exc:
                 log.warning("Cannot inspect nf-core environment %s: %s", path, exc)
-                stderr.print(f"Skipping nf-core environment {path}: {exc}", markup=False)
+                stderr.print(
+                    f"Skipping nf-core environment {path}: {exc}", markup=False
+                )
                 continue
             log.info("Installed nf-core candidate: %s (%s)", path, version)
             if version.is_prerelease or version.is_devrelease:
@@ -691,7 +741,9 @@ class DownloadSoftware:
                 continue
             candidates.append((version, str(path)))
         if not candidates:
-            raise RuntimeError("No installed stable nf-core-tools found in micromamba nf-core* environments!")
+            raise RuntimeError(
+                "No installed stable nf-core-tools found in micromamba nf-core* environments!"
+            )
         version, self.nf_core_prefix = max(candidates)
         message = f"[yellow]Selected nf-core environment: {self.nf_core_prefix}; installed version: {version}"
         stderr.print(message)
@@ -711,16 +763,28 @@ class DownloadSoftware:
         self.select_nf_core_environment()
         prefix = self.nf_core_command_prefix()
         result = subprocess.run(
-            prefix + ["--version"], check=True, capture_output=True,
-            text=True, timeout=60,
+            prefix + ["--version"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         version = (result.stdout + result.stderr).strip()
         help_result = subprocess.run(
-            prefix + ["pipelines", "download", "--help"], check=True,
-            capture_output=True, text=True, timeout=60,
+            prefix + ["pipelines", "download", "--help"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         help_text = help_result.stdout + help_result.stderr
-        required = ["--revision", "--outdir", "--container-system", "--container-cache-utilisation", "--compress"]
+        required = [
+            "--revision",
+            "--outdir",
+            "--container-system",
+            "--container-cache-utilisation",
+            "--compress",
+        ]
         if self.nf_core_cache_mode == "remote":
             required.append("--container-cache-index")
         missing = [option for option in required if option not in help_text]
@@ -731,7 +795,9 @@ class DownloadSoftware:
         self.nf_core_tools_version = version
         selected = self.nf_core_prefix or self.nf_core_env
         log.info("nf-core environment: %s; tools version: %s", selected, version)
-        stderr.print(f"nf-core environment: {selected}; tools version: {version}", markup=False)
+        stderr.print(
+            f"nf-core environment: {selected}; tools version: {version}", markup=False
+        )
         return version
 
     def nf_core_command_prefix(self):
@@ -740,7 +806,9 @@ class DownloadSoftware:
         actually running it.
         """
         if self.nf_core_env == "auto" and self.nf_core_prefix is None:
-            raise RuntimeError("Select the nf-core environment before building a command")
+            raise RuntimeError(
+                "Select the nf-core environment before building a command"
+            )
         if self.nf_core_prefix is not None:
             return ["micromamba", "run", "-p", self.nf_core_prefix, "nf-core"]
         return ["micromamba", "run", "-n", self.nf_core_env, "nf-core"]
@@ -778,7 +846,9 @@ class DownloadSoftware:
         without modifying the current terminal environment.
         """
         env = os.environ.copy()
-        env["NXF_SINGULARITY_CACHEDIR"] = str(self.singularity_images_path.expanduser().resolve())
+        env["NXF_SINGULARITY_CACHEDIR"] = str(
+            self.singularity_images_path.expanduser().resolve()
+        )
         return env
 
     def show_nf_core_command(self, name, version):
@@ -800,7 +870,9 @@ class DownloadSoftware:
         """
         destination = self.nf_core_destination(name, version)
         if destination.exists() or destination.is_symlink():
-            raise FileExistsError(f"Refusing to overwrite existing nf-core destination: {destination}")
+            raise FileExistsError(
+                f"Refusing to overwrite existing nf-core destination: {destination}"
+            )
         tools_version = self.check_nf_core_tools()
         command = self.build_nf_core_command(name, version)
         env = self.nf_core_environment()
@@ -814,19 +886,31 @@ class DownloadSoftware:
         )
         log.info("nf-core/%s %s output log: %s", name, version, log_filepath)
         with log_filepath.open("w", encoding="utf-8") as log_fh:
-            log_fh.write(f"nf-core environment: {self.nf_core_prefix or self.nf_core_env}\n{tools_version}\n")
-            log_fh.write(f"NXF_SINGULARITY_CACHEDIR={env['NXF_SINGULARITY_CACHEDIR']}\n")
+            log_fh.write(
+                f"nf-core environment: {self.nf_core_prefix or self.nf_core_env}\n{tools_version}\n"
+            )
+            log_fh.write(
+                f"NXF_SINGULARITY_CACHEDIR={env['NXF_SINGULARITY_CACHEDIR']}\n"
+            )
             log_fh.write("Command: " + shlex.join(command) + "\n")
             log_fh.flush()
             try:
                 with subprocess.Popen(
-                    command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    env=env, text=True, encoding="utf-8", errors="replace", bufsize=1,
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    bufsize=1,
                 ) as process:
                     for line in process.stdout:
                         log_fh.write(line)
                         log_fh.flush()
-                        log.info("[nf-core/%s %s] %s", name, version, line.rstrip("\r\n"))
+                        log.info(
+                            "[nf-core/%s %s] %s", name, version, line.rstrip("\r\n")
+                        )
                     returncode = process.wait()
                 if returncode != 0:
                     raise subprocess.CalledProcessError(returncode, command)

@@ -1016,9 +1016,7 @@ def download_software(ctx, templates_path, image, pipeline, check_only, dry_run)
     debug = ctx.obj.get("debug", False)
     try:
         if not ctx.obj.get("manual_log_file") and not dry_run:
-            setup_automatic_logging(
-                None, None, "download-software", ctx.obj["conf"]
-            )
+            setup_automatic_logging(None, None, "download-software", ctx.obj["conf"])
 
         downloader = buisciii.download_software.DownloadSoftware(
             ctx.obj["conf"],
@@ -1029,7 +1027,7 @@ def download_software(ctx, templates_path, image, pipeline, check_only, dry_run)
             check_only,
         )
         downloader.handle_download_software()
-        
+
     except Exception as e:
         if debug:
             log.exception(f"EXCEPTION FOUND: {e}")
